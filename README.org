@@ -36,3 +36,13 @@ http://xquartz.org
 
 - Today only use http://thi.ng/geom
 
+
+* Running the code
+
+#+BEGIN_SRC shell
+cd ws-bra-1
+lein repl
+
+(require 'ws-bra-1.core :reload)
+(ring-cluster "rings.svg" [100 200 75 80])
+#+END_SRC

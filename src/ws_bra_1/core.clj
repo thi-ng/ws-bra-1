@@ -19,6 +19,12 @@
    [clojure.java.io :as io]
    [thi.ng.geom.mesh.io :as mio]))
 
+(def inner-radius 30)
+(def inner-offset (vec2 0 0))
+(def inset-depth 20)
+(def material-thick 2.95)
+(def ring-distance 250)
+
 (defn save-as-svg
   [path {:keys [width height body]}]
   (->> body
@@ -28,14 +34,14 @@
        (spit path)))
 
 #_(save-as-svg
- "foo.svg"
- {:body (-> (circle [300 200] 100)
-            (g/as-polygon 5)
-            (utils/poly-as-linestrip)
-            (g/sample-uniform 20000 false)
-            (polygon2)
-            (utils/smooth-polygon 0.125 0.25 8)
-            (utils/shape-vertices-as-circles 2))})
+   "foo.svg"
+   {:body (-> (circle [300 200] 100)
+              (g/as-polygon 5)
+              (utils/poly-as-linestrip)
+              (g/sample-uniform 20000 false)
+              (polygon2)
+              (utils/smooth-polygon 0.125 0.25 8)
+              (utils/shape-vertices-as-circles 2))})
 
 
 (def curve-points
@@ -58,9 +64,9 @@
 ;; meshlab.sf.net
 
 #_(with-open [out (io/output-stream "rings.stl")]
-  (mio/write-stl
-   (mio/wrapped-output-stream out)
-   (g/tessellate (reduce g/into (make-rings-along-curve)))))
+    (mio/write-stl
+     (mio/wrapped-output-stream out)
+     (g/tessellate (reduce g/into (make-rings-along-curve)))))
 
 
 (defn make-agent
@@ -68,6 +74,39 @@
   {:pos    [0 0]
    :dir    (g/as-cartesian
             (v/vec2 1 (m/radians (m/random -45 45))))
-   :speed  (m/random 1 5)        
+   :speed  (m/random 1 5)
    :smooth (m/random 0.05 0.25) ;; percentage
    })
+
+
+(defn make-inset
+  [theta]
+  (let [p (g/as-cartesian (vec2 inner-radius (m/radians theta)))
+        n (m/normalize (g/normal p) material-thick)
+        m (m/normalize p inset-depth)
+        a (m/- p n)
+        d (m/+ p n)
+        b (m/+ a m)
+        c (m/+ d m)]
+    [a b c d]))
+
+(def inner-circle
+  (polygon2 (mapcat make-inset [0 120 240])))
+
+(defn ring
+  [i r]
+  [:g {:fill      "none"
+       :stroke    "black"
+       :transform (str "translate(" (* i ring-distance) "," r ")")}
+   (circle r)
+   (g/translate inner-circle inner-offset)])
+
+(defn ring-cluster
+  [path rings]
+  (save-as-svg
+   path
+   {:width 1000
+    :body (map-indexed ring rings)}))
+
+;; (require 'ws-bra-1.core :reload)
+;; (ring-cluster "rings.svg" [100 200 75 80])
