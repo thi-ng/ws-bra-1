@@ -21,9 +21,12 @@
 
 (def inner-radius 30)
 (def inner-offset (vec2 0 0))
-(def inset-depth 20)
+(def inset-depth 15)
 (def material-thick 2.95)
 (def ring-distance 250)
+(def rod-length 350)
+(def rod-width 15)
+
 
 (defn save-as-svg
   [path {:keys [width height body]}]
@@ -80,8 +83,8 @@
 
 
 (defn make-inset
-  [theta]
-  (let [p (g/as-cartesian (vec2 inner-radius (m/radians theta)))
+  [radius theta]
+  (let [p (g/as-cartesian (vec2 radius (m/radians theta)))
         n (m/normalize (g/normal p) material-thick)
         m (m/normalize p inset-depth)
         a (m/- p n)
@@ -91,7 +94,7 @@
     [a b c d]))
 
 (def inner-circle
-  (polygon2 (mapcat make-inset [0 120 240])))
+  (polygon2 (mapcat #(make-inset inner-radius %) [0 120 240])))
 
 (defn ring
   [i r]
@@ -107,6 +110,20 @@
    path
    {:width 1000
     :body (map-indexed ring rings)}))
+
+(defn make-rod
+  [num-rings]
+  (let [[a b c d] (make-inset rod-width 0)
+        inset  [b a d c]
+        delta  (/ rod-length (inc num-rings))
+        insets (mapcat
+                (fn [i]
+                  (let [offset (* (inc i) delta)]
+                    (map #(m/+ % 0 offset) inset)))
+                (range num-rings))]
+    (-> (into [[0 0] [(+ rod-width inset-depth) 0]] insets)
+        (conj [(+ rod-width inset-depth) rod-length] [0 rod-length])
+        (polygon2))))
 
 ;; (require 'ws-bra-1.core :reload)
 ;; (ring-cluster "rings.svg" [100 200 75 80])
